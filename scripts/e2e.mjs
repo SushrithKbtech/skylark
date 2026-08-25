@@ -169,6 +169,26 @@ const CASES = [
       return null;
     },
   },
+  {
+    id: "consistency-audit",
+    question: "Do our billing and collection numbers actually add up? Any contradictions?",
+    expect: (r) => {
+      if (!r.tools.some((t) => t.name === "audit_consistency")) return "never ran the audit";
+      if (!/(exceed|contradict|discrepan|reconcil)/i.test(r.answer))
+        return "answer does not report on contradictions";
+      return null;
+    },
+  },
+  {
+    id: "duplicate-name",
+    question: "What is the status of the Tanjiro deal?",
+    expect: (r) => {
+      // Several rows share this name; collapsing them into one is a wrong answer.
+      if (!/(five|six|5|6|multiple|several|distinct|separate|share)/i.test(r.answer))
+        return "presented duplicate-named rows as a single deal";
+      return null;
+    },
+  },
 ];
 
 const results = [];

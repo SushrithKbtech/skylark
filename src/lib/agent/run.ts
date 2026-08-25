@@ -83,9 +83,12 @@ function summarize(name: string, result: unknown): { ok: boolean; summary: strin
     }
     case "aggregate_metrics": {
       const groups = (r?.groups as unknown[])?.length ?? 0;
+      const gap = r?.uncertainty as { excluded_rows: number } | undefined;
       return {
         ok: true,
-        summary: `${r?.aggregation} of ${r?.metric} · ${r?.matched} rows · ${groups} group${groups === 1 ? "" : "s"}`,
+        summary: `${r?.aggregation} of ${r?.metric} · ${r?.matched} rows · ${groups} group${groups === 1 ? "" : "s"}${
+          gap ? ` · ${gap.excluded_rows} blank row(s) projected` : ""
+        }`,
       };
     }
     case "query_records":
@@ -100,6 +103,20 @@ function summarize(name: string, result: unknown): { ok: boolean; summary: strin
       return {
         ok: true,
         summary: boards.map((b) => `${b.board_name} ${b.completeness} complete`).join("   ·   "),
+      };
+    }
+    case "audit_consistency": {
+      const boards = (r?.boards as { findings: { violations: number }[]; checks_run: number }[]) ?? [];
+      const violations = boards.reduce(
+        (n, b) => n + b.findings.reduce((m, f) => m + f.violations, 0),
+        0,
+      );
+      const checks = boards.reduce((n, b) => n + b.checks_run, 0);
+      return {
+        ok: true,
+        summary: `${checks} consistency check${checks === 1 ? "" : "s"} · ${
+          violations ? `${violations} contradicting row(s)` : "no contradictions"
+        }`,
       };
     }
     case "join_boards":

@@ -111,6 +111,16 @@ export const TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     },
   ),
   fn(
+    "audit_consistency",
+    "Reconciles the arithmetic between related numeric columns and reports rows whose values contradict each other: billed exceeding the order value, collected exceeding billed, receivable disagreeing with billed minus collected, quantity balances that do not reconcile. This is different from data_quality_report, which finds missing values. This finds values that are present but wrong. Use it when the user asks whether the numbers are correct or can be trusted, when a figure looks implausible, before a leadership brief, or when asked about billing, collections or revenue leakage.",
+    {
+      type: "object",
+      properties: {
+        board: { type: "string", enum: ["work_orders", "deals", "both"] },
+      },
+    },
+  ),
+  fn(
     "join_boards",
     "Match rows across the two boards on a shared key (for example deal name, client code or owner code) and report coverage: how many deals have work orders, and optionally a metric summed on each side. Use for questions that span pipeline and execution.",
     {
@@ -225,6 +235,12 @@ export async function runTool(name: string, input: ToolInput): Promise<unknown> 
             issues: d.quality.issues.slice(0, 20),
           })),
         };
+      }
+
+      case "audit_consistency": {
+        const datasets = await datasetsFor(input.board);
+        const { auditConsistency } = await import("@/lib/data/audit");
+        return { boards: datasets.map(auditConsistency) };
       }
 
       case "join_boards":

@@ -52,7 +52,7 @@ function resolveField(dataset: Dataset, name: string) {
   );
 }
 
-function cellOf(row: Row, key: string): string | number | null {
+export function cellOf(row: Row, key: string): string | number | null {
   if (key === "item_name") return row.name;
   if (key in row.derived) return row.derived[key];
   return row.values[key] ?? null;
@@ -213,6 +213,21 @@ export type Confidence = {
   basis: string[];
 };
 
+/**
+ * What the total would be if the rows dropped for a blank metric were not
+ * actually blank. Reporting "₹4.8 Cr, but 7 of 11 rows had no value" leaves the
+ * reader unable to act; bounding the gap tells them whether the missing data
+ * could change the decision. Explicitly an estimate, and labelled as one.
+ */
+export type Uncertainty = {
+  reported: number;
+  excluded_rows: number;
+  typical_value: number;
+  projected_total: number;
+  projected_range: [number, number];
+  method: string;
+};
+
 export type AggregateResult = {
   board: string;
   metric: string;
@@ -224,58 +239,124 @@ export type AggregateResult = {
   overall: number | null;
   groups: { group: string; value: number; count: number; missingMetric: number }[];
   confidence: Confidence;
+  uncertainty?: Uncertainty;
+};
+
+const percentile = (sorted: number[], p: number) => {
+  if (!sorted.length) return 0;
+  const i = Math.min(sorted.length - 1, Math.max(0, Math.round((sorted.length - 1) * p)));
+  return sorted[i];
 };
 
 /**
- * Rates how much weight an answer can carry, from the fill rate of the exact
- * fields it touched. Deliberately pessimistic: the weakest field sets the tone,
- * because one sparse column is enough to make a total misleading.
+ * Projects the excluded rows from the distribution of the populated ones. Uses
+ * the median rather than the mean so a single outlier deal cannot inflate the
+ * projection, and brackets it with the interquartile range.
+ */
+function estimateUncertainty(
+  reported: number,
+  knownValues: number[],
+  excluded: number,
+): Uncertainty | undefined {
+  if (excluded <= 0 || knownValues.length < 3) return undefined;
+
+  const sorted = [...knownValues].sort((a, b) => a - b);
+  const median = percentile(sorted, 0.5);
+  const p25 = percentile(sorted, 0.25);
+  const p75 = percentile(sorted, 0.75);
+
+  return {
+    reported: round(reported),
+    excluded_rows: excluded,
+    typical_value: round(median),
+    projected_total: round(reported + excluded * median),
+    projected_range: [round(reported + excluded * p25), round(reported + excluded * p75)],
+    method: `The reported figure counts only the ${knownValues.length} rows that have a value. The ${excluded} row(s) with none are projected here at the median of those rows, bracketed by their 25th and 75th percentiles. This is an estimate for sizing the gap, not data. Quote the reported figure as the number, and the projection only to say how much the missing rows could move it.`,
+  };
+}
+
+/**
+ * Rates how much weight an answer can carry.
+ *
+ * Scoped deliberately to the rows this answer actually used, not the board as a
+ * whole: a column that is 48% populated board-wide is irrelevant if every row
+ * that matched the filter has a value. Each field is also judged by the role it
+ * played, because those roles carry different risk:
+ *
+ *   metric   - a blank drops the row from the total, so this drives the score
+ *   groupBy  - a blank becomes a visible "(not set)" bucket, so it is reported
+ *              and only mildly penalised
+ *   filter   - a row that matched an equality filter necessarily has the value,
+ *              so it carries no penalty at all
  */
 export function rateConfidence(
   dataset: Dataset,
-  fieldNames: (string | undefined)[],
-  matchedRows: number,
-  excludedRows: number,
+  rows: Row[],
+  opts: { aggregation: Aggregation; metric?: string; groupBy?: string },
 ): Confidence {
+  const matched = rows.length;
+  if (!matched) {
+    return { level: "low", score: 0, basis: ["no rows matched this filter"] };
+  }
+
   const basis: string[] = [];
-  let worst = 1;
+  let score = 100;
 
-  for (const name of fieldNames) {
-    if (!name) continue;
-    let resolved;
+  const fieldFor = (name?: string) => {
+    if (!name) return undefined;
     try {
-      resolved = resolveField(dataset, name);
+      const resolved = resolveField(dataset, name);
+      return dataset.fields.find((f) => f.key === resolved.key.split("__")[0]);
     } catch {
-      continue;
+      return undefined;
     }
-    const field = dataset.fields.find((f) => f.key === resolved.key.split("__")[0]);
-    if (!field) continue;
+  };
 
-    const total = field.filled + field.missing;
-    if (!total) continue;
-    const fill = field.filled / total;
-    worst = Math.min(worst, fill);
-    basis.push(`${field.title} ${Math.round(fill * 100)}% populated`);
-
-    if (field.unparsed > 0) {
-      basis.push(`${field.unparsed} value(s) in ${field.title} could not be read`);
+  // Counting rows never reads the metric, so a sparse metric cannot hurt it.
+  if (opts.aggregation !== "count" && opts.metric) {
+    const field = fieldFor(opts.metric);
+    if (field) {
+      const filled = rows.filter((r) => cellOf(r, field.key) !== null).length;
+      const fill = filled / matched;
+      score = Math.min(score, Math.round(fill * 100));
+      basis.push(
+        filled === matched
+          ? `${field.title} is populated on all ${matched} rows used here`
+          : `${field.title} is missing on ${matched - filled} of the ${matched} rows used here, so they are excluded from the total`,
+      );
+      if (field.unparsed > 0) {
+        basis.push(`${field.unparsed} value(s) in ${field.title} could not be read board-wide`);
+      }
     }
   }
 
-  if (matchedRows > 0 && excludedRows > 0) {
-    const share = excludedRows / matchedRows;
-    worst = Math.min(worst, 1 - share);
-    basis.push(`${excludedRows} of ${matchedRows} matching rows excluded for a blank value`);
+  if (opts.groupBy) {
+    const field = fieldFor(opts.groupBy);
+    if (field) {
+      const blank = rows.filter((r) => cellOf(r, field.key) === null).length;
+      if (blank) {
+        // Reported as "(not set)" rather than dropped, so this is a caveat, not a loss.
+        score = Math.min(score, 100 - Math.round((blank / matched) * 35));
+        basis.push(
+          `${blank} of ${matched} rows have no ${field.title} and are reported as "(not set)" rather than dropped`,
+        );
+      }
+    }
   }
 
-  if (matchedRows > 0 && matchedRows < 5) {
-    worst = Math.min(worst, 0.5);
-    basis.push(`only ${matchedRows} row(s) matched, so the figure is thin`);
+  // A handful of rows is a thin base for a claim regardless of completeness.
+  if (matched < 5) {
+    score = Math.min(score, 55);
+    basis.push(`only ${matched} row${matched === 1 ? "" : "s"} matched, so the figure is thin`);
   }
 
-  const score = Math.round(worst * 100);
+  score = Math.max(0, Math.min(100, score));
   const level = score >= 85 ? "high" : score >= 60 ? "medium" : "low";
-  return { level, score, basis: basis.length ? basis : ["all fields used are fully populated"] };
+  return {
+    level,
+    score,
+    basis: basis.length ? basis : [`every field used is populated on all ${matched} rows`],
+  };
 }
 
 export function aggregateMetrics(
@@ -376,16 +457,17 @@ export function aggregateMetrics(
     excludedForMissingMetric: all.missing,
     overall: rows.length ? round(reduce(all)) : null,
     groups,
-    confidence: rateConfidence(
-      dataset,
-      [
-        opts.metric,
-        opts.groupBy,
-        ...(opts.filters ?? []).map((f) => f.field),
-      ],
-      rows.length,
-      all.missing,
-    ),
+    confidence: rateConfidence(dataset, rows, {
+      aggregation: agg,
+      metric: opts.metric,
+      groupBy: opts.groupBy,
+    }),
+    // Only meaningful for a total: projecting an average or a min/max from the
+    // rows that happen to be populated would not describe anything real.
+    uncertainty:
+      agg === "sum"
+        ? estimateUncertainty(reduce(all) as number, all.values, all.missing)
+        : undefined,
   };
 }
 
