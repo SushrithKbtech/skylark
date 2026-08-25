@@ -1,0 +1,641 @@
+@import "tailwindcss";
+
+/* ===========================================================================
+   Skylark BI — light-first token system.
+   =========================================================================== */
+:root {
+  color-scheme: light;
+
+  --bg: #f6f7fa;
+  --bg-2: #ffffff;
+  --surface: rgba(255, 255, 255, 0.78);
+  --surface-solid: #ffffff;
+  --surface-2: rgba(15, 20, 35, 0.03);
+  --line: rgba(15, 20, 35, 0.09);
+  --line-2: rgba(15, 20, 35, 0.16);
+
+  --text: #0d1117;
+  --muted: #4a5364;
+  --faint: #78839a;
+
+  --accent: #6d5bd0;
+  --accent-2: #4f46e5;
+  --accent-soft: rgba(109, 91, 208, 0.1);
+  --success: #0e9f6e;
+  --warning: #c2740a;
+  --danger: #e02f4a;
+
+  --sheen: linear-gradient(
+    150deg,
+    rgba(255, 255, 255, 0.95),
+    transparent 40%,
+    transparent 62%,
+    rgba(255, 255, 255, 0.6)
+  );
+  --shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 12px 30px -8px rgba(16, 24, 40, 0.1);
+  --shadow-lg: 0 8px 20px -6px rgba(16, 24, 40, 0.1), 0 34px 70px -20px rgba(16, 24, 40, 0.2);
+  --btn-face: linear-gradient(180deg, #7b68e0, #5a4bc4);
+  --btn-shadow: 0 10px 30px -10px rgba(109, 91, 208, 0.65),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  --track: rgba(15, 20, 35, 0.08);
+
+  --grad: linear-gradient(100deg, #6d5bd0 0%, #4f46e5 52%, #7c3aed 100%);
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface-solid);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+
+  --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--bg);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Ambient wash, fixed behind everything. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(900px 620px at 12% -6%, rgba(124, 92, 214, 0.13), transparent 62%),
+    radial-gradient(820px 560px at 90% 4%, rgba(47, 111, 224, 0.11), transparent 62%);
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--track);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--line-2);
+}
+
+/* ===========================================================================
+   Typography
+   =========================================================================== */
+/* Rationed: at most one per three sections. See the design notes in README. */
+.kicker {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.display {
+  font-family: var(--font-display), Georgia, serif;
+  font-size: clamp(2.1rem, 3.7vw, 3.15rem);
+  font-weight: 500;
+  letter-spacing: -0.022em;
+  /* Descender clearance for the clipped gradient span. */
+  line-height: 1.12;
+  padding-bottom: 0.06em;
+  margin: 0;
+}
+
+.h2 {
+  font-family: var(--font-display), Georgia, serif;
+  font-size: clamp(1.7rem, 3.1vw, 2.5rem);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.18;
+  padding-bottom: 0.04em;
+  margin: 0;
+}
+
+.stat {
+  font-family: var(--font-display), Georgia, serif;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.h3 {
+  font-size: 1.02rem;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+}
+
+.sub {
+  color: var(--muted);
+  font-size: 1.06rem;
+  line-height: 1.68;
+}
+
+/*
+ * Flowing accent gradient, applied to a single emphasised phrase inside a
+ * headline rather than to the whole headline.
+ */
+.grad {
+  background: linear-gradient(
+    100deg,
+    #4f46e5 0%,
+    #6d5bd0 22%,
+    #a855f7 42%,
+    #6d5bd0 62%,
+    #4f46e5 100%
+  );
+  background-size: 260% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: flow 7s linear infinite;
+  /* Italic and descenders need room inside a clipped background box. */
+  padding-bottom: 0.08em;
+}
+
+@keyframes flow {
+  from {
+    background-position: 0% 50%;
+  }
+  to {
+    background-position: 260% 50%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .grad {
+    animation: none;
+    background-position: 40% 50%;
+  }
+}
+
+.mono {
+  font-family: var(--font-geist-mono), ui-monospace, "SF Mono", monospace;
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ===========================================================================
+   Glass surfaces
+   =========================================================================== */
+.glass {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  backdrop-filter: blur(22px) saturate(150%);
+  -webkit-backdrop-filter: blur(22px) saturate(150%);
+  border-radius: 20px;
+  position: relative;
+  box-shadow: var(--shadow);
+}
+.glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--sheen);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.glass-lift {
+  transition:
+    transform 0.4s var(--ease),
+    box-shadow 0.4s var(--ease),
+    border-color 0.4s var(--ease);
+}
+.glass-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+  border-color: color-mix(in srgb, var(--accent) 32%, transparent);
+}
+
+.glow {
+  box-shadow: var(--shadow-lg);
+}
+
+/* ===========================================================================
+   Controls
+   =========================================================================== */
+.field {
+  width: 100%;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 11px 13px;
+  color: var(--text);
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  transition:
+    border-color 0.25s,
+    background 0.25s,
+    box-shadow 0.25s;
+}
+.field::placeholder {
+  color: var(--faint);
+}
+.field:focus {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 13px 26px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  background: var(--btn-face);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  overflow: hidden;
+  transition:
+    transform 0.28s var(--ease),
+    box-shadow 0.28s var(--ease);
+  box-shadow: var(--btn-shadow);
+}
+.btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+.btn:active:not(:disabled) {
+  transform: translateY(0) scale(0.985);
+}
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.btn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    115deg,
+    transparent 35%,
+    rgba(255, 255, 255, 0.22) 50%,
+    transparent 65%
+  );
+  transform: translateX(-120%);
+  transition: transform 0.8s var(--ease);
+}
+.btn:hover:not(:disabled)::after {
+  transform: translateX(120%);
+}
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-radius: 13px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 14.5px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition:
+    color 0.22s var(--ease),
+    border-color 0.22s var(--ease),
+    transform 0.22s var(--ease);
+}
+.btn-ghost:hover {
+  color: var(--text);
+  border-color: var(--line-2);
+  transform: translateY(-1px);
+}
+
+.chipbtn {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.22s var(--ease);
+}
+.chipbtn:hover {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+/* ===========================================================================
+   Motion
+   =========================================================================== */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(22px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes pulseDot {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(0.8);
+  }
+}
+@keyframes sweep {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+@keyframes floatSlow {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-9px);
+  }
+}
+@keyframes growBar {
+  from {
+    transform: scaleX(0);
+    transform-origin: left;
+  }
+  to {
+    transform: scaleX(1);
+    transform-origin: left;
+  }
+}
+
+.animate-fade-up {
+  animation: fadeUp 0.9s var(--ease) both;
+}
+.animate-fade-in {
+  animation: fadeIn 0.5s var(--ease) both;
+}
+.animate-dot {
+  animation: pulseDot 1.5s ease-in-out infinite;
+}
+.animate-float {
+  animation: floatSlow 7s ease-in-out infinite;
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--faint) 0%,
+    var(--faint) 35%,
+    var(--accent) 50%,
+    var(--faint) 65%,
+    var(--faint) 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: sweep 2.4s linear infinite;
+}
+
+/* Reveal-on-scroll: set by an IntersectionObserver. */
+.reveal {
+  opacity: 0;
+  transform: translateY(26px);
+  transition:
+    opacity 0.85s var(--ease),
+    transform 0.85s var(--ease);
+}
+.reveal.in {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .reveal {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ===========================================================================
+   Markdown answers
+   =========================================================================== */
+.answer {
+  line-height: 1.7;
+  color: var(--muted);
+  font-size: 14.5px;
+}
+.answer > * + * {
+  margin-top: 0.95em;
+}
+.answer strong {
+  color: var(--text);
+  font-weight: 600;
+}
+.answer h1,
+.answer h2,
+.answer h3,
+.answer h4 {
+  color: var(--text);
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  line-height: 1.34;
+  margin-top: 1.7em;
+}
+.answer h1 {
+  font-size: 1.18rem;
+}
+.answer h2 {
+  font-size: 1.07rem;
+}
+.answer h3,
+.answer h4 {
+  font-size: 0.96rem;
+}
+.answer > :first-child {
+  margin-top: 0;
+}
+.answer ol {
+  padding-left: 1.15rem;
+  list-style: decimal;
+}
+.answer ul {
+  list-style: none;
+  padding-left: 0.1rem;
+}
+.answer ul > li {
+  position: relative;
+  padding-left: 1.1rem;
+}
+.answer ul > li::before {
+  content: "";
+  position: absolute;
+  left: 0.15rem;
+  top: 0.72em;
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+.answer li + li {
+  margin-top: 0.4em;
+}
+.answer li::marker {
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+}
+.answer a {
+  color: var(--accent);
+  text-underline-offset: 3px;
+  text-decoration-line: underline;
+  text-decoration-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  transition: text-decoration-color 0.2s var(--ease);
+}
+.answer a:hover {
+  text-decoration-color: var(--accent);
+}
+.answer code {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.86em;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 0.1em 0.36em;
+  color: var(--text);
+}
+.answer pre {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 0.9rem 1rem;
+  overflow-x: auto;
+  font-size: 0.85rem;
+}
+.answer pre code {
+  background: none;
+  border: 0;
+  padding: 0;
+}
+.answer blockquote {
+  border-left: 2px solid color-mix(in srgb, var(--accent) 60%, transparent);
+  padding-left: 0.95rem;
+  color: var(--faint);
+}
+.answer hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 1.6em 0;
+}
+.answer .table-scroll {
+  overflow-x: auto;
+  border-radius: 12px;
+}
+.answer table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+.answer thead th {
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.7rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--faint);
+  padding: 0 0.9rem 0.55rem;
+  border-bottom: 1px solid var(--line-2);
+  white-space: nowrap;
+}
+.answer tbody td {
+  padding: 0.6rem 0.9rem;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+.answer tbody td:first-child {
+  color: var(--text);
+  font-weight: 500;
+  white-space: normal;
+}
+.answer tbody tr {
+  transition: background 0.16s var(--ease);
+}
+.answer tbody tr:hover {
+  background: var(--surface-2);
+}
+.answer thead th:first-child,
+.answer tbody td:first-child {
+  padding-left: 0;
+}
+.answer td:not(:first-child),
+.answer th:not(:first-child) {
+  text-align: right;
+}
