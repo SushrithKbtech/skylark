@@ -1,11 +1,50 @@
-# Skylark BI — monday.com Business Intelligence Agent
+# Skylark BI - monday.com Business Intelligence Agent
 
-A conversational agent that answers founder-level business questions by querying two
+A conversational agent that answers founder-level business questions by reading two
 monday.com boards live: **Deals** (sales pipeline) and **Work Orders** (project execution
 and billing).
 
 No board data is bundled with the application. Every figure in every answer comes from a
-monday.com API read performed at request time.
+monday.com API read performed at the moment the question is asked.
+
+---
+
+## Using the hosted app
+
+The prototype is deployed and needs no local setup. Open the link, click **Open the
+console**, and ask a question in plain language.
+
+**Live app:** _add your deployment URL here_
+
+### What to ask
+
+The agent is built for the way a founder actually phrases things, not for field names.
+Questions that exercise the full system:
+
+| Question | What it demonstrates |
+| --- | --- |
+| How is our pipeline looking for the mining sector this quarter? | Sector filter, fiscal-quarter handling, sparse-data caveats |
+| What is our total billed revenue, and how much is still to be collected? | Multi-metric revenue reporting across billing columns |
+| Which sector is performing best for us? | Grouped aggregation and ranking |
+| How many work orders are ongoing versus completed? | Operational metrics from the second board |
+| Compare our deals pipeline against the work orders we are executing. Any gap? | Cross-board reasoning |
+| How trustworthy is the deals data? What is missing? | Explicit data-quality reporting |
+| Prepare a leadership update for this week's board meeting. | The leadership-update interpretation |
+
+### Reading an answer
+
+Each answer carries three things beyond the prose:
+
+- **Tool trail** - the exact monday.com queries the agent ran, expandable, so any number
+  can be traced back to the query that produced it.
+- **Confidence rating** - computed from the fill rate of the specific fields the answer
+  used. Click it to see what drove the score. A total built on a 48%-populated column is
+  labelled low, and the agent says so in the answer.
+- **Copy for a brief** - copies the answer as clean markdown, ready to paste into a doc
+  or a message.
+
+The left panel shows both boards' live row counts, field counts and completeness, plus
+the timestamp of the last read.
 
 ---
 
@@ -13,176 +52,155 @@ monday.com API read performed at request time.
 
 ```
 Browser (React chat UI)
-      │  POST /api/chat        Server-Sent Events: text · tool_start · tool_end · error
-      ▼
-Next.js route handler  ──────────────────────────────────────────┐
-      │                                                          │
-      ▼                                                          ▼
-Agent loop (src/lib/agent/run.ts)                    Status probe (/api/status)
+      |  POST /api/chat     Server-Sent Events: text, tool_start, tool_end, error
+      v
+Next.js route handler
+      |
+      v
+Agent loop (src/lib/agent/run.ts)
   OpenAI chat completions + function calling
-      │
-      │  tool call
-      ▼
+      |
+      |  tool call
+      v
 Tool layer (src/lib/agent/tools.ts)
-  describe_boards · aggregate_metrics · query_records
-  data_quality_report · join_boards
-      │
-      ▼
+  describe_boards, aggregate_metrics, query_records,
+  data_quality_report, join_boards
+      |
+      v
 Dataset layer (src/lib/data/)
-  store.ts     60s request-scoped cache, de-duplicates concurrent reads
-  dataset.ts   raw board  ->  typed fields + normalised rows + quality report
-  normalize.ts date / number / category / null coercion
-  query.ts     filtering and aggregation engine
-      │
-      ▼
+  store.ts      60s request-scoped cache, de-duplicates concurrent reads
+  dataset.ts    raw board -> typed fields + normalised rows + quality report
+  normalize.ts  date / number / category / null coercion
+  query.ts      filtering, aggregation, confidence rating
+      |
+      v
 monday.com client (src/lib/monday/)
-  client.ts    GraphQL transport, auth, retry with backoff, typed errors
-  boards.ts    schema discovery + cursor pagination
-      │
-      ▼
-monday.com GraphQL API v2  (read-only)
+  client.ts     GraphQL transport, auth, retry with backoff, typed errors
+  boards.ts     schema discovery + cursor pagination
+      |
+      v
+monday.com API v2 (read-only)
 ```
 
-### Why this shape
+### Design decisions worth calling out
 
-**The agent is a tool-calling loop, not a text-to-SQL layer.** The model never sees raw
-board rows in bulk and never does arithmetic itself. It picks a tool, the server computes
-the number deterministically, and the model explains the result. Totals are therefore
-reproducible and cannot drift with model sampling.
+**The model never does arithmetic.** It selects a tool and the server computes the figure.
+This costs some flexibility and buys reproducibility: the same question returns the same
+number every time, which matters when the number ends up in a leadership deck.
 
-**Schema is discovered, never hardcoded.** `describe_boards` reads the live column list,
-infers each field's type from its monday type, its title and its actual values, and reports
-the real spellings of every categorical value with counts. The agent is told to call it
-before anything else, so it filters on `Mining` because the data says `Mining` — not
-because a prompt guessed it. This also means the app keeps working if you restructure the
-boards or rename a column.
+**No column names in the code.** Field keys, types and the real spellings of every
+category are discovered at runtime from the board schema. Rename a column in monday.com
+or change its type and the next question still answers correctly.
 
-**Cleaning happens server-side, once per read.** Dates, currency, quantities-with-units and
-null-like strings are normalised in `normalize.ts` before the agent ever sees them, so the
-model is not asked to interpret `"5360 HA"` or `"N/A"` on the fly.
+**Read-only by construction.** There is no monday.com mutation anywhere in the codebase.
 
----
+**Tool errors are self-correcting.** An unknown field name returns the list of valid keys
+rather than an exception, so the agent repairs its own call on the next turn instead of
+surfacing a failure to the user.
 
-## Data resilience
-
-The supplied data is genuinely messy. The normaliser handles:
-
-| Problem | Handling |
-| --- | --- |
-| Null-like strings | `""`, `-`, `N/A`, `TBD`, `NIL`, `unknown`, `?`, `#N/A` and friends all collapse to a real null |
-| Mixed date formats | ISO, `15/03/2024`, `3-15-24`, `15 Mar 2024`, `March 15, 2024`, Excel serial numbers |
-| Ambiguous D/M vs M/D | Resolved day-first unless a component exceeds 12 (source data is Indian-format) |
-| Currency | `₹1,20,000`, `$45k`, `1.2 Cr`, `(500)` for negatives, `Rs.` prefixes |
-| Units inside numbers | `5360 HA`, `12 nos`, `40kms` parse to the bare number |
-| Inconsistent labels | `Energy`, `energy `, `ENERGY_SECTOR` collapse to one grouping bucket |
-| Unparseable values | Counted per field and surfaced, never silently coerced to zero |
-| Header row not on row 1 | Detected by the import script (`scripts/prepare-import.mjs`) |
-
-Every aggregation reports `excludedForMissingMetric` — the number of matching rows dropped
-because the metric was blank. The system prompt requires the agent to state that count
-rather than present a total as complete. `data_quality_report` exposes per-field
-completeness, unparseable counts, duplicate names and suspected free-text categories.
-
-## Error handling
-
-- **monday.com**: typed errors for auth, rate limit, network and GraphQL failures.
-  Transient failures (429, 5xx, complexity-budget exhaustion) retry with exponential
-  backoff up to four attempts; auth and config failures fail fast with a fix-it message.
-- **Tool errors** are returned to the model as a tool result rather than thrown, and error
-  messages list the valid field keys — so a bad field name is self-correcting on the next
-  turn instead of ending the conversation.
-- **The UI** surfaces the failure and the remedy, and the connection panel tells you which
-  environment variable is missing before you ever send a message.
+**Credentials never reach the browser.** Every key stays inside the Next.js route handler.
 
 ---
 
-## Setup
+## monday.com configuration
 
 ### 1. Import the boards
 
-The two supplied workbooks need light preparation — the work order sheet has a blank first
-row that breaks monday's importer, and its real header sits on row 2.
+The two source spreadsheets are converted to import-ready CSVs:
 
 ```bash
-npm install
 node scripts/prepare-import.mjs
 ```
 
-This writes `excel/import-ready/deals.csv` (346 rows) and
-`excel/import-ready/work-orders.csv` (176 rows).
+This writes `excel/import-ready/deals.csv` and `excel/import-ready/work-orders.csv`.
 
-In monday.com, for each file: **Add board → Import from file → CSV**. Let monday
-auto-detect column types; the agent re-infers types itself, so the exact choices are not
-critical. Import them as **two separate boards**.
+In monday.com, use **Add to workspace → More → Import data → Excel/CSV** and import each
+file as its own board. Accept the auto-detected column types; the agent re-infers types
+from the actual values, so the import mapping does not need to be perfect.
 
-### 2. Get credentials
+### 2. Get an API token
 
-- **monday.com token** — avatar → **Developers** → **My access tokens**. Read scope is
-  enough; the agent never writes.
-- **Board IDs** — the numeric segment of each board URL:
-  `https://<account>.monday.com/boards/1234567890` → `1234567890`
-- **OpenAI key** — any key with access to a tool-calling model.
+monday.com → your avatar → **Developers** → **My access tokens**. A read-only personal
+token is sufficient.
 
-### 3. Configure and run
+### 3. Get the board IDs
 
-```bash
-cp .env.example .env.local
-```
-
-Fill in:
+Open each board and take the numeric segment of the URL:
 
 ```
-OPENAI_API_KEY=sk-...
-OPENAI_MODEL=gpt-4o
-MONDAY_API_TOKEN=eyJhbGciOi...
-MONDAY_BOARD_DEALS=1234567890
-MONDAY_BOARD_WORK_ORDERS=1234567891
+https://<account>.monday.com/boards/5030844277
+                                    ^^^^^^^^^^
 ```
 
-```bash
-npm run dev
-```
+### 4. Set the environment variables
 
-Open http://localhost:3000. The left panel confirms both boards are reachable and shows
-their row counts and completeness. `GET /api/status` is the same check as JSON.
+| Variable | Purpose |
+| --- | --- |
+| `OPENAI_API_KEY` | OpenAI key for the agent loop |
+| `OPENAI_MODEL` | Any tool-calling model, e.g. `gpt-4o-mini` |
+| `MONDAY_API_TOKEN` | monday.com personal access token |
+| `MONDAY_BOARD_DEALS` | Board ID for the deals board |
+| `MONDAY_BOARD_WORK_ORDERS` | Board ID for the work orders board |
 
-### 4. Deploy
-
-Push to a Git remote and import the repository into Vercel, setting the same five
-environment variables in the project settings. No other configuration is required — the
-API routes run on the Node.js runtime and there is no database.
+On Vercel these go in **Project → Settings → Environment Variables**. Locally they go in
+`.env.local`, which is gitignored.
 
 ---
 
-## Project layout
+## Handling messy data
 
+Real board data is broken in ordinary ways. Nothing is imputed and nothing is silently
+dropped: every total reports how many rows it excluded for a blank value.
+
+**Dates** - four formats in one column (ISO, day-first, textual, Excel serial) all parse.
+Ambiguous day-versus-month is resolved day-first, matching the Indian-format source, and
+documented as an assumption. Blank close dates are excluded from quarter splits and the
+excluded count is reported.
+
+**Numbers** - `₹1,20,000`, `1.2 Cr`, `45k` and `(500)` all parse. Units baked into values
+(`5360 HA`) resolve to the number. The several columns whose titles all contain "amount"
+are kept distinct: ordered, billed, collected and receivable never merge.
+
+**Text** - twelve spellings of empty (`N/A`, `TBD`, `nil`, `-`, `#N/A`) collapse to null.
+Label drift (`Energy`, `energy `, `ENERGY_SECTOR`) groups as one category. Status values
+that are identical to their own column title are treated as import artifacts, not values.
+
+---
+
+## Local development
+
+Not required to evaluate the prototype; the hosted link needs no setup. For working on
+the code:
+
+```bash
+npm install
+cp .env.example .env.local   # then fill in the five variables above
+npm run dev
 ```
-src/
-  app/
-    api/chat/route.ts       SSE endpoint, request validation
-    api/status/route.ts     connection + board health probe
-    page.tsx                layout shell
-  components/
-    Chat.tsx                conversation state, SSE parsing, composer
-    BoardPanel.tsx          live board status sidebar
-    ToolTrail.tsx           per-answer trail of monday.com queries
-    Answer.tsx              markdown rendering
-  lib/
-    agent/                  system prompt, tool schemas, agent loop
-    data/                   normalisation, dataset build, query engine, cache
-    monday/                 GraphQL client and board fetching
-scripts/
-  prepare-import.mjs        workbook -> monday-importable CSV (setup only)
+
+### Tests
+
+An end-to-end acceptance harness drives the real API against the live boards and asserts
+on which tools ran and what the answers contained:
+
+```bash
+node scripts/e2e.mjs
 ```
 
-## Notes and limits
+It covers the eight question types in the table above plus the monday.com connection
+probe, and exits non-zero on any failure.
 
-- Board reads are capped at 10,000 rows per board (40 pages of 250). Both supplied boards
-  are far below this.
-- The 60-second cache is deliberately short: it stops a single multi-tool answer from
-  re-paginating the same board five times, without ever serving stale data across a
-  conversation.
-- Cross-board matching uses masked identifiers, so one key can cover several real records.
-  `join_boards` returns that caveat with every result and the agent is instructed to repeat
-  it.
-- The agent has read access only. There is no monday.com mutation anywhere in the codebase.
+---
+
+## Tech stack
+
+| Choice | Why |
+| --- | --- |
+| Next.js (App Router) | One deployable unit for UI and API; route handlers keep credentials server-side |
+| TypeScript | The normalisation layer is the risky part of this system and benefits most from types |
+| OpenAI function calling | Mature tool-calling; the agent picks tools while the server owns the maths |
+| monday.com GraphQL API v2 | Direct control over pagination, retry and complexity budget |
+| Tailwind v4 | Utility-first styling with no component-library weight |
+| Server-Sent Events | Token streaming and live tool-progress over one connection, no WebSocket infrastructure |
+
+See `DECISION_LOG.md` for assumptions, trade-offs, and what would change with more time.

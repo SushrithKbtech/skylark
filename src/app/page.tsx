@@ -1,11 +1,5 @@
 import Link from "next/link";
-import {
-  ArrowRightIcon,
-  PathIcon,
-  SealCheckIcon,
-  ShieldWarningIcon,
-  ClipboardTextIcon,
-} from "@phosphor-icons/react/dist/ssr";
+import { ArrowRightIcon } from "@phosphor-icons/react/dist/ssr";
 import { Nav } from "@/components/site/Nav";
 import { Reveal } from "@/components/site/Reveal";
 import { DemoConsole } from "@/components/site/DemoConsole";
@@ -14,25 +8,33 @@ import { NeuralBackground } from "@/components/site/NeuralBackground";
 
 const DIFFERENTIATORS = [
   {
-    Icon: SealCheckIcon,
     title: "Every answer carries a confidence rating",
     body: "Computed from the completeness of the exact fields the answer used, not a vibe. A number built on a 42%-filled column says so, in the answer.",
   },
   {
-    Icon: PathIcon,
     title: "Show the working",
     body: "The trail of monday.com queries behind each answer stays attached to it. Any figure can be traced back to the query that produced it.",
   },
   {
-    Icon: ShieldWarningIcon,
     title: "Survives a restructured board",
     body: "No column names in the code. Rename a field or change a column type in monday.com and the next question still answers correctly.",
   },
   {
-    Icon: ClipboardTextIcon,
     title: "Briefs leave as text, not screenshots",
     body: "Any answer copies out as clean markdown, so a leadership update goes straight into a doc or a message without reformatting.",
   },
+];
+
+/** Real questions the agent handles, shown as a marquee instead of a list. */
+const ASKABLE = [
+  "How is our pipeline looking for the mining sector this quarter?",
+  "How much have we billed but not collected?",
+  "Which sector is performing best for us?",
+  "How many work orders are still ongoing?",
+  "Where is the gap between deals won and work executed?",
+  "Prepare a leadership update for the board meeting.",
+  "How trustworthy is the deals data?",
+  "Which accounts are concentrating our revenue risk?",
 ];
 
 const DATA_GROUPS = [
@@ -138,60 +140,42 @@ export default function Landing() {
           </h2>
         </Reveal>
 
-        <div className="mt-11 grid gap-3.5 lg:grid-cols-3">
-          <Reveal className="lg:col-span-2">
-            <article
-              className="glass glass-lift flex h-full flex-col justify-between gap-6 p-7"
-              style={{
-                background:
-                  "linear-gradient(135deg, color-mix(in srgb, var(--accent) 9%, var(--surface-solid)), var(--surface-solid))",
-              }}
-            >
-              <div>
-                <SealCheckIcon size={26} weight="duotone" style={{ color: "var(--accent)" }} />
-                <h3 className="h3 mt-4 text-[1.15rem]">
-                  {DIFFERENTIATORS[0].title}
-                </h3>
-                <p className="mt-2.5 max-w-[48ch] text-[14px] leading-relaxed text-[var(--muted)]">
-                  {DIFFERENTIATORS[0].body}
-                </p>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2.5">
-                {[
-                  ["High", "var(--success)", "94% of fields used were populated"],
-                  ["Medium", "var(--warning)", "one field 61% populated"],
-                  ["Low", "var(--danger)", "key field under 40%"],
-                ].map(([label, color, note]) => (
-                  <span
-                    key={label as string}
-                    className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5"
-                    style={{
-                      borderColor: `color-mix(in srgb, ${color} 32%, transparent)`,
-                      background: `color-mix(in srgb, ${color} 7%, transparent)`,
-                    }}
-                    title={note as string}
-                  >
-                    <span className="text-[11.5px] font-semibold" style={{ color: color as string }}>
-                      {label}
-                    </span>
-                    <span className="mono text-[10.5px] text-[var(--faint)]">confidence</span>
-                  </span>
-                ))}
-              </div>
-            </article>
-          </Reveal>
-
-          {DIFFERENTIATORS.slice(1).map((d, i) => (
-            <Reveal key={d.title} delay={(i + 1) * 80} className={i === 0 ? "" : "lg:col-span-1"}>
-              <article className="glass glass-lift h-full p-6">
-                <d.Icon size={22} weight="duotone" style={{ color: "var(--accent)" }} />
-                <h3 className="h3 mt-3.5">{d.title}</h3>
-                <p className="mt-2 text-[13.6px] leading-relaxed text-[var(--muted)]">{d.body}</p>
+        <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {DIFFERENTIATORS.map((d, i) => (
+            <Reveal key={d.title} delay={i * 100}>
+              <article className="tile h-full p-6">
+                <span className="tile-index text-4xl">{String(i + 1).padStart(2, "0")}</span>
+                <h3 className="h3 mt-5 text-[1.05rem]">{d.title}</h3>
+                <p className="mt-2.5 text-[13.6px] leading-relaxed text-[var(--muted)]">{d.body}</p>
               </article>
             </Reveal>
           ))}
         </div>
+
+        {/* The three ratings the first pillar refers to, shown rather than described. */}
+        <Reveal delay={200}>
+          <div className="mt-8 flex flex-wrap items-center gap-2.5">
+            {[
+              ["High", "var(--success)", "every field used was well populated"],
+              ["Medium", "var(--warning)", "one field around 60% populated"],
+              ["Low", "var(--danger)", "a key field under 40% populated"],
+            ].map(([label, color, note]) => (
+              <span
+                key={label}
+                className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5"
+                style={{
+                  borderColor: `color-mix(in srgb, ${color} 32%, transparent)`,
+                  background: `color-mix(in srgb, ${color} 7%, transparent)`,
+                }}
+              >
+                <span className="text-[11.5px] font-semibold" style={{ color }}>
+                  {label}
+                </span>
+                <span className="text-[11.5px] text-[var(--faint)]">{note}</span>
+              </span>
+            ))}
+          </div>
+        </Reveal>
       </section>
 
       {/* Messy data: grouped columns, not a card grid. No eyebrow. */}
@@ -300,30 +284,44 @@ monday.com API v2       read-only`}
         </div>
       </section>
 
-      {/* CTA: centered panel. No eyebrow. */}
-      <section className="mx-auto w-full max-w-[1180px] px-5 pt-8 pb-24">
+      {/* Question marquee: shows the range of questions without a list. */}
+      <section className="marquee-mask overflow-hidden border-y border-[var(--line)] py-6">
+        <div className="marquee-track gap-3.5">
+          {[...ASKABLE, ...ASKABLE].map((q, i) => (
+            <span
+              key={i}
+              className="glass whitespace-nowrap !rounded-full px-5 py-2.5 text-[13.5px] text-[var(--muted)]"
+            >
+              {"“"}
+              {q}
+              {"”"}
+            </span>
+          ))}
+        </div>
+      </section>
+
+      {/* CTA: full-bleed gradient. No eyebrow. */}
+      <section className="relative overflow-hidden px-5 py-28 text-center">
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(900px 420px at 50% 0%, color-mix(in srgb, var(--accent) 17%, transparent), transparent 72%)",
+          }}
+        />
         <Reveal>
-          <div className="glass glow relative overflow-hidden px-8 py-14 text-center sm:px-14">
-            <div
-              className="pointer-events-none absolute inset-0"
-              style={{
-                background:
-                  "radial-gradient(620px 300px at 50% 0%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 70%)",
-              }}
-            />
-            <div className="relative">
-              <h2 className="display mx-auto max-w-[16ch] text-center">
-                Ask it something{" "}
-                <span className="grad">a founder would ask.</span>
-              </h2>
-              <p className="sub mx-auto mt-5 max-w-[44ch]">
-                The console shows every monday.com query it ran to reach the answer.
-              </p>
-              <Link href="/console" className="btn mt-8">
-                Open the console
-                <ArrowRightIcon size={15} weight="bold" />
-              </Link>
-            </div>
+          <div className="relative">
+            <h2 className="display mx-auto max-w-[16ch] text-center">
+              Ask it something{" "}
+              <span className="grad">a founder would ask.</span>
+            </h2>
+            <p className="sub mx-auto mt-5 max-w-[44ch]">
+              The console shows every monday.com query it ran to reach the answer.
+            </p>
+            <Link href="/console" className="btn mt-8">
+              Open the console
+              <ArrowRightIcon size={15} weight="bold" />
+            </Link>
           </div>
         </Reveal>
       </section>

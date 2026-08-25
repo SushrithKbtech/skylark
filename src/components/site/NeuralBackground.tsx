@@ -28,7 +28,7 @@ export function NeuralBackground() {
 
     let width = 0;
     let height = 0;
-    let dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
     let nodes: Node[] = [];
 
     const seed = () => {

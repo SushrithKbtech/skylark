@@ -143,7 +143,7 @@ export function parseDate(raw: unknown): string | null {
   // Day-first or month-first numeric: 15/03/2024, 3-15-24
   const numeric = s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})/);
   if (numeric) {
-    let [, a, b, y] = numeric;
+    const [, a, b, y] = numeric;
     let year = Number(y);
     if (year < 100) year += year < 50 ? 2000 : 1900;
     let day = Number(a);

@@ -29,7 +29,42 @@ function client() {
   if (!apiKey) {
     throw new MondayError("OPENAI_API_KEY is not set on the server.", "config", false);
   }
-  return new OpenAI({ apiKey });
+  // Transient connection resets to the API are common enough on long
+  // tool-calling loops that the default of 2 retries is not enough.
+  return new OpenAI({ apiKey, maxRetries: 4, timeout: 60_000 });
+}
+
+const isTransient = (err: unknown) => {
+  if (err instanceof OpenAI.APIError) {
+    return err.status === undefined || err.status === 429 || err.status >= 500;
+  }
+  return err instanceof Error;
+};
+
+/**
+ * Opens the completion stream, retrying transient failures. Only safe to retry
+ * here: nothing has been streamed to the caller yet, so no output is duplicated.
+ */
+async function openStream(
+  openai: OpenAI,
+  messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[],
+) {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, 2 ** attempt * 500));
+    try {
+      return await openai.chat.completions.create({
+        model: MODEL,
+        messages,
+        tools: TOOLS,
+        stream: true,
+      });
+    } catch (err) {
+      lastError = err;
+      if (!isTransient(err)) throw err;
+    }
+  }
+  throw lastError;
 }
 
 /** One-line description of a tool result, shown in the UI's activity trail. */
@@ -130,12 +165,7 @@ export async function* runAgent(history: ChatMessage[]): AsyncGenerator<AgentEve
 
   try {
     for (let turn = 0; turn < MAX_TURNS; turn++) {
-      const stream = await openai.chat.completions.create({
-        model: MODEL,
-        messages,
-        tools: TOOLS,
-        stream: true,
-      });
+      const stream = await openStream(openai, messages);
 
       let text = "";
       const calls = new Map<number, PendingCall>();

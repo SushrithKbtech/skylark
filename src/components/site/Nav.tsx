@@ -34,7 +34,8 @@ export function Nav({ variant = "site" }: { variant?: "site" | "app" }) {
         }`}
         style={{ transitionTimingFunction: "var(--ease)" }}
       >
-        <div className="mx-auto flex h-[64px] w-full max-w-[1180px] items-center gap-3 px-5">
+        {/* Full-bleed: brand pinned to the left edge, actions to the right. */}
+        <div className="flex h-[64px] w-full items-center gap-3 px-5 sm:px-7">
           <Link href="/" className="flex items-center gap-2">
             <Mark size={30} />
             <span className="flex items-baseline gap-2.5">
