@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   XIcon,
-  PrinterIcon,
   ArrowClockwiseIcon,
   WarningIcon,
   ShieldCheckIcon,
@@ -103,14 +102,6 @@ export function ReportPanel({ open, onClose }: { open: boolean; onClose: () => v
             >
               <ArrowClockwiseIcon size={14} weight="bold" className={loading ? "animate-spin" : ""} />
               Refresh
-            </button>
-            <button
-              onClick={() => window.print()}
-              disabled={!report}
-              className="btn !px-3.5 !py-2 !text-[13px]"
-            >
-              <PrinterIcon size={14} weight="bold" />
-              Save as PDF
             </button>
             <button
               onClick={onClose}
