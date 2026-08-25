@@ -194,6 +194,10 @@ export async function* runAgent(history: ChatMessage[]): AsyncGenerator<AgentEve
   // Every number any tool returned this turn, for the grounding check.
   const toolNumbers = new Set<number>();
   let finalText = "";
+  // Tool results are pure functions of (name, args) over a fixed dataset, so a
+  // call repeated verbatim — e.g. several identical guesses fired in one
+  // parallel batch — can reuse the first result instead of redoing the work.
+  const resultCache = new Map<string, unknown>();
 
   try {
     for (let turn = 0; turn < MAX_TURNS; turn++) {
@@ -269,12 +273,19 @@ export async function* runAgent(history: ChatMessage[]): AsyncGenerator<AgentEve
 
         yield { type: "tool_start", id: call.id, name: call.name, input };
 
-        const result = parseError
-          ? { error: parseError, recoverable: true }
-          : await runTool(call.name, input).catch((err) => ({
-              error: friendlyError(err).message,
-              recoverable: false,
-            }));
+        const cacheKey = parseError ? null : `${call.name}::${call.args}`;
+        let result: unknown;
+        if (cacheKey && resultCache.has(cacheKey)) {
+          result = resultCache.get(cacheKey);
+        } else {
+          result = parseError
+            ? { error: parseError, recoverable: true }
+            : await runTool(call.name, input).catch((err) => ({
+                error: friendlyError(err).message,
+                recoverable: false,
+              }));
+          if (cacheKey) resultCache.set(cacheKey, result);
+        }
 
         collectToolNumbers(result, toolNumbers);
         const { ok, summary } = summarize(call.name, result);

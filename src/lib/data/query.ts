@@ -16,6 +16,40 @@ export type Aggregation = "sum" | "avg" | "count" | "count_distinct" | "min" | "
 
 export class QueryError extends Error {}
 
+function levenshtein(a: string, b: string): number {
+  const dp: number[][] = Array.from({ length: a.length + 1 }, (_, i) => [
+    i,
+    ...Array(b.length).fill(0),
+  ]);
+  for (let j = 0; j <= b.length; j++) dp[0][j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      dp[i][j] =
+        a[i - 1] === b[j - 1]
+          ? dp[i - 1][j - 1]
+          : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+    }
+  }
+  return dp[a.length][b.length];
+}
+
+/** Closest real field to a guessed name, so a bad guess can be corrected in one retry rather than repeated. */
+function suggestField(dataset: Dataset, wanted: string): string | undefined {
+  const candidates = dataset.fields.map((f) => ({ key: f.key, lower: f.key.toLowerCase() }));
+
+  const substring = candidates.find(
+    (c) => c.lower.includes(wanted) || wanted.includes(c.lower),
+  );
+  if (substring) return substring.key;
+
+  let best: { key: string; dist: number } | undefined;
+  for (const c of candidates) {
+    const dist = levenshtein(wanted, c.lower);
+    if (!best || dist < best.dist) best = { key: c.key, dist };
+  }
+  return best && best.dist <= Math.max(2, Math.ceil(wanted.length * 0.4)) ? best.key : undefined;
+}
+
 function resolveField(dataset: Dataset, name: string) {
   const wanted = name.toLowerCase().trim();
 
@@ -45,10 +79,11 @@ function resolveField(dataset: Dataset, name: string) {
   );
   if (loose) return { key: loose.key, kind: loose.kind, title: loose.title };
 
+  const suggestion = suggestField(dataset, wanted);
   throw new QueryError(
-    `Field "${name}" does not exist on board "${dataset.boardName}". Available: ${dataset.fields
-      .map((f) => f.key)
-      .join(", ")}`,
+    `Field "${name}" does not exist on board "${dataset.boardName}".${
+      suggestion ? ` Did you mean "${suggestion}"?` : ""
+    } Available: ${dataset.fields.map((f) => f.key).join(", ")}`,
   );
 }
 
