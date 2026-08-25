@@ -4,7 +4,7 @@ import { Nav } from "@/components/site/Nav";
 import { Reveal } from "@/components/site/Reveal";
 import { DemoConsole } from "@/components/site/DemoConsole";
 import { HeroVisual } from "@/components/site/HeroVisual";
-import { Tour, LANDING_STEPS } from "@/components/Tour";
+import { GuideToConsole } from "@/components/Tour";
 import { NeuralBackground } from "@/components/site/NeuralBackground";
 
 const DIFFERENTIATORS = [
@@ -103,12 +103,7 @@ export default function Landing() {
                 Open the console
                 <ArrowRightIcon size={15} weight="bold" />
               </Link>
-              <Tour
-                steps={LANDING_STEPS}
-                storageKey="skylark-landing-tour"
-                autoOpen={false}
-                label="Guide me"
-              />
+              <GuideToConsole />
             </div>
           </div>
 
@@ -119,9 +114,9 @@ export default function Landing() {
       </section>
 
       {/* How it works: stepped preview. No eyebrow. */}
-      <section id="how" data-tour="how" className="mx-auto w-full max-w-[1180px] scroll-mt-20 px-5 py-20">
+      <section id="how" className="mx-auto w-full max-w-[1180px] scroll-mt-20 px-5 py-20">
         <Reveal>
-          <h2 className="h2 max-w-[19ch]">
+          <h2 data-tour="how" className="h2 max-w-[19ch]">
             One question in. Four things happen before a number comes out.
           </h2>
           <p className="sub mt-4 max-w-[56ch]">
@@ -136,10 +131,10 @@ export default function Landing() {
       </section>
 
       {/* Differentiators: asymmetric bento, mixed cell sizes. Eyebrow 2 of 2. */}
-      <section id="trust" data-tour="trust" className="mx-auto w-full max-w-[1180px] scroll-mt-20 px-5 py-20">
+      <section id="trust" className="mx-auto w-full max-w-[1180px] scroll-mt-20 px-5 py-20">
         <Reveal>
           <span className="kicker">Beyond answering the question</span>
-          <h2 className="h2 mt-4 max-w-[21ch]">
+          <h2 data-tour="trust" className="h2 mt-4 max-w-[21ch]">
             The hard part is knowing when the number is worth trusting.
           </h2>
         </Reveal>

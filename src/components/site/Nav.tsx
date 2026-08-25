@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { ArrowRightIcon } from "@phosphor-icons/react/dist/ssr";
-import { Mark } from "./Mark";
 import { ReportLauncher } from "@/components/report/ReportLauncher";
+import { Tour, CONSOLE_STEPS } from "@/components/Tour";
 
 export function Nav({ variant = "site" }: { variant?: "site" | "app" }) {
   const [stuck, setStuck] = useState(false);
@@ -37,13 +37,11 @@ export function Nav({ variant = "site" }: { variant?: "site" | "app" }) {
       >
         {/* Full-bleed: brand pinned to the left edge, actions to the right. */}
         <div className="flex h-[64px] w-full items-center gap-3 px-5 sm:px-7">
-          <Link href="/" className="flex items-center gap-2">
-            <Mark size={30} />
-            <span className="flex items-baseline gap-2.5">
-              <span className="text-[15.5px] font-semibold tracking-[-0.015em]">Skylark BI</span>
-              <span className="hidden text-[12.5px] text-[var(--faint)] sm:inline">
-                monday.com intelligence agent
-              </span>
+          {/* Wordmark only: a mark plus a name plus a tagline crowds the left
+              edge, and the name is doing the work. */}
+          <Link href="/" className="flex items-baseline gap-2.5">
+            <span className="serif text-[21px] leading-none font-medium tracking-[-0.02em]">
+              Skylark <span className="grad">BI</span>
             </span>
           </Link>
 
@@ -71,7 +69,17 @@ export function Nav({ variant = "site" }: { variant?: "site" | "app" }) {
               </>
             )}
 
-            {variant === "app" && <ReportLauncher />}
+            {variant === "app" && (
+              <>
+                <Tour
+                  steps={CONSOLE_STEPS}
+                  storageKey="skylark-tour-manual"
+                  autoOpen={false}
+                  label="Guide me"
+                />
+                <ReportLauncher />
+              </>
+            )}
 
             <Link
               href={variant === "app" ? "/" : "/console"}
