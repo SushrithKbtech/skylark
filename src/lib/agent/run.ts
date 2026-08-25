@@ -89,7 +89,12 @@ function summarize(name: string, result: unknown): { ok: boolean; summary: strin
       };
     }
     case "query_records":
-      return { ok: true, summary: `${r?.returned} of ${r?.matched} matching rows` };
+      return {
+        ok: true,
+        summary: `${r?.returned} of ${r?.matched} matching rows${
+          r?.ambiguous_name_warning ? " · repeated names, not one record" : ""
+        }`,
+      };
     case "data_quality_report": {
       const boards = (r?.boards as { board_name: string; completeness: string }[]) ?? [];
       return {

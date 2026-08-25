@@ -29,6 +29,13 @@ client codes are formatted differently on each board (`COMPANY089` vs `WOCOMPANY
 Cross-board matching is therefore reported as indicative coverage with that caveat
 attached to every result, never as an exact join.
 
+Instructing the model about this was not sufficient. Asked about a named deal it would
+answer with one row's values as though that were the whole entity — six rows share the
+name "Tanjiro" with different values, stages and sectors. The rule is now enforced in the
+tool layer: `query_records` returns an `ambiguous_name_warning` whenever the rows it
+returns share names, so the model cannot miss it. A constraint that matters belongs in
+the data the model receives, not only in its instructions.
+
 **Missing data is reported, not imputed.** Nothing is filled in, inferred, or defaulted to
 zero. Every aggregation returns the count of rows dropped for a blank metric, and the
 agent is instructed to state it. A total that quietly excludes 40% of rows is the failure
@@ -103,10 +110,13 @@ behaviour with a wide board — the work orders board has 38 columns, and comple
 throttling is handled by retry but has not been exercised against a genuinely rate-limited
 account.
 
-**Add a numeric evaluation harness.** A fixed set of questions with expected answers
-computed independently from the source workbooks, run against the agent, would catch a
-regression in the normaliser far faster than reading answers by eye. This is the single
-thing I would add first.
+**Assert on values, not just shape.** `scripts/e2e.mjs` now drives the real endpoint
+against the live boards and asserts which tools ran and what the answer contained, and
+`scripts/verify-integrity.mjs` confirms nothing was lost between the workbooks and the
+boards (346 and 176 rows, all columns, no value drift). What neither does is check a
+figure against an independently computed expected value. That is the next step: compute
+totals directly from the workbooks and diff them against the agent's answers, which would
+catch a normaliser regression that still produces a plausible-looking number.
 
 **Charts, not just tables.** Pipeline-by-stage and billed-vs-collected are shape questions,
 and a sparkline or funnel would communicate them faster than a markdown table. I skipped

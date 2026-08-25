@@ -129,7 +129,39 @@ export type RecordsResult = {
   fields: string[];
   records: Record<string, string | number | null>[];
   note?: string;
+  /**
+   * Names repeat across unrelated rows in this data, so a name is never an
+   * identifier. When the result set contains repeats, say so loudly here: the
+   * model cannot then present one row as though it were the whole entity.
+   */
+  ambiguous_name_warning?: string;
 };
+
+/**
+ * Flags repeated item names among the returned rows. Reads the underlying rows
+ * rather than the projected records, so it still fires when the caller did not
+ * select the name field.
+ */
+function duplicateNameWarning(rows: Row[]): string | undefined {
+  const counts = new Map<string, number>();
+  for (const row of rows) {
+    const name = row.name;
+    if (typeof name !== "string" || !name.trim()) continue;
+    const key = name.trim().toLowerCase();
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+
+  const repeated = [...counts.entries()].filter(([, n]) => n > 1);
+  if (!repeated.length) return undefined;
+
+  const detail = repeated
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([name, n]) => `"${name}" x${n}`)
+    .join(", ");
+
+  return `These rows are DISTINCT records that happen to share a name (${detail}). A name is not a unique identifier in this data. Do not describe them as one deal or merge their values. Report how many records share the name and either list them separately or aggregate them explicitly.`;
+}
 
 export function queryRecords(
   dataset: Dataset,
@@ -171,6 +203,7 @@ export function queryRecords(
       rows.length > records.length
         ? `${rows.length - records.length} more rows matched but were not returned. Use aggregate_metrics for totals rather than paging through records.`
         : undefined,
+    ambiguous_name_warning: duplicateNameWarning(ordered.slice(0, limit)),
   };
 }
 
