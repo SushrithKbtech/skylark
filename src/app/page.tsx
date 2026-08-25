@@ -72,14 +72,14 @@ export default function Landing() {
 
       {/* Hero: asymmetric split. Eyebrow 1 of 2. */}
       <section className="mx-auto w-full max-w-[1180px] px-5 pt-10 pb-20 sm:pt-16 lg:pt-20">
-        <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-16">
+        <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,0.7fr)] lg:gap-14">
           <div>
             <div className="animate-fade-up">
               <span className="kicker">monday.com intelligence agent</span>
             </div>
 
             <h1
-              className="display animate-fade-up mt-5 max-w-[17ch]"
+              className="display animate-fade-up mt-5 max-w-[24ch]"
               style={{ animationDelay: "90ms" }}
             >
               Founder questions,{" "}
@@ -290,7 +290,7 @@ monday.com API v2       read-only`}
           {[...ASKABLE, ...ASKABLE].map((q, i) => (
             <span
               key={i}
-              className="glass whitespace-nowrap !rounded-full px-5 py-2.5 text-[13.5px] text-[var(--muted)]"
+              className="serif whitespace-nowrap rounded-[3px] border border-[var(--line-2)] px-5 py-2 text-[15px] italic text-[var(--muted)]"
             >
               {"“"}
               {q}

@@ -128,9 +128,9 @@ body::before {
 
 .display {
   font-family: var(--font-display), Georgia, serif;
-  font-size: clamp(2.1rem, 3.7vw, 3.15rem);
+  font-size: clamp(2.4rem, 4.3vw, 3.6rem);
   font-weight: 500;
-  letter-spacing: -0.022em;
+  letter-spacing: -0.024em;
   /* Descender clearance for the clipped gradient span. */
   line-height: 1.12;
   padding-bottom: 0.06em;
@@ -206,6 +206,10 @@ body::before {
 
 .mono {
   font-family: var(--font-geist-mono), ui-monospace, "SF Mono", monospace;
+}
+
+.serif {
+  font-family: var(--font-display), Georgia, serif;
 }
 
 @utility tabular {
@@ -569,6 +573,8 @@ body::before {
   line-height: 1.7;
   color: var(--muted);
   font-size: 14.5px;
+  min-width: 0;
+  max-width: 100%;
 }
 .answer > * + * {
   margin-top: 0.95em;
@@ -674,6 +680,10 @@ body::before {
 .answer .table-scroll {
   overflow-x: auto;
   border-radius: 12px;
+  /* Without min-width:0 a flex/grid child grows to its content instead of
+     scrolling, so wide tables spill off-screen on narrow viewports. */
+  min-width: 0;
+  max-width: 100%;
 }
 .answer table {
   width: 100%;
