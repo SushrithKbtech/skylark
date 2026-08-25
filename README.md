@@ -7,7 +7,7 @@ Orders** (project execution and billing, 176 rows).
 No board data ships with the application. Every figure in every answer comes from a
 monday.com API read performed at the moment the question is asked.
 
-**Live app:** _paste your deployment URL here_
+**Live app:** https://skylark-xi-eight.vercel.app
 
 ---
 
@@ -306,7 +306,7 @@ npm run dev
 
 ```bash
 node scripts/e2e.mjs                      # against localhost
-node scripts/e2e.mjs https://your-app.app # against the deployment
+node scripts/e2e.mjs https://skylark-xi-eight.vercel.app   # against production
 ```
 
 Drives the real SSE endpoint against the live boards and asserts on which tools ran, what
