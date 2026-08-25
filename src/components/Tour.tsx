@@ -122,6 +122,17 @@ export function Tour({
 
     el.classList.add(HIGHLIGHT);
     highlighted.current = el;
+
+    // A resize or orientation change can move the target out of view; bring it
+    // back rather than leaving the highlight somewhere off-screen.
+    const onResize = () => {
+      const rect = el.getBoundingClientRect();
+      if (rect.top < 80 || rect.bottom > window.innerHeight - 80) {
+        el.scrollIntoView({ behavior: "instant" as ScrollBehavior, block: "center" });
+      }
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
   }, [open, step, dropHighlight]);
 
   const close = useCallback(() => {
@@ -217,8 +228,8 @@ export function Tour({
 
       {/* Pinned to the bottom of the viewport. A card that chased the target is
           what kept landing on top of the thing it was describing. */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center p-5">
-        <div className="glass glow pointer-events-auto relative w-[min(94vw,420px)] p-5">
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-4">
+        <div className="glass glow pointer-events-auto relative max-h-[80vh] w-[min(92vw,420px)] overflow-y-auto p-5">
           <button
             onClick={close}
             aria-label="Close the tour"
@@ -240,7 +251,10 @@ export function Tour({
 
           {true && (
             <div className="mt-5 flex items-center gap-2">
-              <button onClick={advance} className="btn !px-4 !py-2 !text-[13.5px]">
+              <button
+                onClick={finished ? close : advance}
+                className="btn !px-4 !py-2 !text-[13.5px]"
+              >
                 {finished ? "Start asking" : "Next"}
                 <ArrowRightIcon size={14} weight="bold" />
               </button>

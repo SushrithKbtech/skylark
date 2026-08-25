@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { ArrowRightIcon } from "@phosphor-icons/react/dist/ssr";
 import { ReportLauncher } from "@/components/report/ReportLauncher";
-import { Tour, CONSOLE_STEPS } from "@/components/Tour";
 
 export function Nav({ variant = "site" }: { variant?: "site" | "app" }) {
   const [stuck, setStuck] = useState(false);
@@ -70,15 +69,7 @@ export function Nav({ variant = "site" }: { variant?: "site" | "app" }) {
             )}
 
             {variant === "app" && (
-              <>
-                <Tour
-                  steps={CONSOLE_STEPS}
-                  storageKey="skylark-tour-manual"
-                  autoOpen={false}
-                  label="Guide me"
-                />
-                <ReportLauncher />
-              </>
+              <ReportLauncher />
             )}
 
             <Link

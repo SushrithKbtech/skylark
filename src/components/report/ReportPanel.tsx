@@ -75,8 +75,11 @@ export function ReportPanel({ open, onClose }: { open: boolean; onClose: () => v
         role="dialog"
         aria-label="Board report"
         aria-hidden={!open}
+        // Hidden rather than parked off-screen: a fixed element translated past
+        // the right edge still extends the document, which put a horizontal
+        // scrollbar on every page at every width.
         className={`fixed top-0 right-0 z-[95] flex h-dvh w-full max-w-[720px] flex-col border-l border-[var(--line)] transition-transform duration-500 print:static print:h-auto print:max-w-none print:border-0 print:transform-none ${
-          open ? "translate-x-0" : "translate-x-full"
+          open ? "translate-x-0" : "hidden translate-x-full"
         }`}
         style={{
           background: "var(--bg-2)",

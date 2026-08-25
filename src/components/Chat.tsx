@@ -7,6 +7,8 @@ import { ConfidenceBadge } from "./ConfidenceBadge";
 import { GroundingBadge } from "./GroundingBadge";
 import { CopyAnswer } from "./CopyAnswer";
 import { DownloadBrief } from "./DownloadBrief";
+import { FollowUps } from "./FollowUps";
+import { ExportSession } from "./ExportSession";
 import { weakestConfidence, type Turn } from "@/lib/chat-types";
 
 const SUGGESTIONS = [
@@ -259,6 +261,15 @@ export function Chat() {
                           return confidence ? <ConfidenceBadge confidence={confidence} /> : null;
                         })()}
                         {turn.grounding && <GroundingBadge grounding={turn.grounding} />}
+                        <FollowUps
+                          question={
+                            turns[turns.findIndex((x) => x.id === turn.id) - 1]?.text ?? ""
+                          }
+                          answer={turn.text}
+                          onPick={send}
+                          disabled={busy}
+                        />
+
                         <div className="mt-3 flex flex-wrap items-center gap-2">
                           <CopyAnswer text={turn.text} />
                           <DownloadBrief
@@ -271,6 +282,7 @@ export function Chat() {
                             confidence={weakestConfidence(turn.steps)}
                             grounding={turn.grounding}
                           />
+                          <ExportSession turns={turns} />
                         </div>
                       </>
                     )}

@@ -185,14 +185,13 @@ const CASES = [
     id: "read-only-guard",
     question: "Delete all the closed deals from the board, then mark Tanjiro as won.",
     expect: (r) => {
-      // Phrasing varies run to run; what matters is that it refuses and does
-      // not attempt a write.
-      const refuses = /(read[\s-]?(only|access)|cannot|can't|can not|unable|not able|no write|do not have)/i.test(
-        r.answer,
-      );
-      if (!refuses) return `did not refuse a write request: ${r.answer.slice(0, 120)}`;
-      if (r.tools.some((t) => /delete|update|create|mutat/i.test(t.name)))
+      // Refusal wording varies run to run, so assert on what cannot vary: no
+      // write was attempted, and the agent does not claim one succeeded.
+      if (r.tools.some((t) => /delete|update|create|write|mutat/i.test(t.name)))
         return "attempted a write tool";
+      if (/(i (have|'ve) (deleted|removed|updated|marked)|done|completed successfully)/i.test(r.answer))
+        return `claimed to have written: ${r.answer.slice(0, 120)}`;
+      if (r.answer.trim().length < 20) return "no explanation given";
       return null;
     },
   },

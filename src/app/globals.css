@@ -65,6 +65,9 @@
 
 html {
   background: var(--bg);
+  /* Belt and braces against any stray full-bleed child. `clip` does not create
+     a scroll container, so sticky positioning still works. */
+  overflow-x: clip;
 }
 
 @media (prefers-reduced-motion: no-preference) {
