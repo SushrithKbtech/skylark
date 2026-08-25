@@ -95,6 +95,21 @@ export function Tour({
   const [box, setBox] = useState<Box | null>(null);
   const raf = useRef(0);
   const measureRef = useRef<() => void>(() => {});
+  // Intro: the cursor travels from the trigger to the first target and taps it
+  // before the page dims, so the overlay arrives as a consequence of the click
+  // rather than appearing on top of the reader without warning.
+  const [phase, setPhase] = useState<"idle" | "intro">("idle");
+  const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
+  const [tapping, setTapping] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const timers = useRef<number[]>([]);
+
+  useEffect(
+    () => () => {
+      for (const t of timers.current) clearTimeout(t);
+    },
+    [],
+  );
 
   useEffect(() => {
     // A timer rather than requestAnimationFrame: rAF is paused in background
@@ -186,19 +201,71 @@ export function Tour({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, close]);
 
+  const startTour = () => {
+    setIndex(0);
+
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const target = document.querySelector<HTMLElement>(`[data-tour="${STEPS[0]?.target}"]`);
+    const btn = triggerRef.current;
+
+    if (reduce || !target || !btn) {
+      setOpen(true);
+      return;
+    }
+
+    const from = btn.getBoundingClientRect();
+    const to = target.getBoundingClientRect();
+    setCursor({ x: from.left + from.width / 2, y: from.top + from.height / 2 });
+    setPhase("intro");
+
+    const at = (ms: number, fn: () => void) => timers.current.push(window.setTimeout(fn, ms));
+
+    // A frame later, so the starting position paints before the transition.
+    at(40, () => setCursor({ x: to.left + to.width / 2, y: to.top + to.height / 2 }));
+    at(900, () => setTapping(true));
+    at(1320, () => {
+      setTapping(false);
+      setPhase("idle");
+      setCursor(null);
+      setOpen(true);
+    });
+  };
+
   if (!open) {
     if (autoOpen) return null;
     return (
-      <button
-        onClick={() => {
-          setIndex(0);
-          setOpen(true);
-        }}
-        className="btn-ghost"
-      >
-        <CursorClickIcon size={15} weight="bold" />
-        {label}
-      </button>
+      <>
+        <button
+          ref={triggerRef}
+          onClick={startTour}
+          disabled={phase === "intro"}
+          className="btn-ghost"
+        >
+          <CursorClickIcon size={15} weight="bold" />
+          {label}
+        </button>
+
+        {phase === "intro" && cursor && (
+          <div className="pointer-events-none fixed inset-0 z-[100]" aria-hidden>
+            <div
+              className="absolute"
+              style={{
+                left: cursor.x,
+                top: cursor.y,
+                transition: "left 860ms var(--ease), top 860ms var(--ease)",
+              }}
+            >
+              <CursorClickIcon
+                size={28}
+                weight="fill"
+                className="drop-shadow-lg"
+                style={{ color: "var(--accent)", transform: "translate(-6px, -4px)" }}
+              />
+              {tapping && <span className="tap-ripple" />}
+            </div>
+          </div>
+        )}
+      </>
     );
   }
 
@@ -256,10 +323,12 @@ export function Tour({
       >
         <button
           onClick={close}
-          aria-label="Skip the tour"
-          className="absolute top-3 right-3 rounded-lg p-1 text-[var(--faint)] transition-colors hover:text-[var(--text)]"
+          aria-label="Close the tour"
+          title="Close the tour"
+          className="absolute top-2.5 right-2.5 inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] text-[var(--faint)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text)]"
         >
-          <XIcon size={15} weight="bold" />
+          <XIcon size={13} weight="bold" />
+          Close
         </button>
 
         <p className="mono text-[10.5px] tracking-[0.18em] text-[var(--faint)] uppercase">
@@ -273,7 +342,7 @@ export function Tour({
         <div className="mt-5 flex items-center gap-2">
           {finished ? (
             <button onClick={close} className="btn !px-4 !py-2 !text-[13.5px]">
-              Start asking
+              {steps === LANDING_STEPS ? "Got it" : "Start asking"}
               <ArrowRightIcon size={14} weight="bold" />
             </button>
           ) : (
