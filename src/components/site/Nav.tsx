@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { ArrowRightIcon } from "@phosphor-icons/react/dist/ssr";
 import { Mark } from "./Mark";
+import { ReportLauncher } from "@/components/report/ReportLauncher";
 
 export function Nav({ variant = "site" }: { variant?: "site" | "app" }) {
   const [stuck, setStuck] = useState(false);
@@ -69,6 +70,8 @@ export function Nav({ variant = "site" }: { variant?: "site" | "app" }) {
                 </a>
               </>
             )}
+
+            {variant === "app" && <ReportLauncher />}
 
             <Link
               href={variant === "app" ? "/" : "/console"}

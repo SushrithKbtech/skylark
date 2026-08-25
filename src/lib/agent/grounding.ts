@@ -95,20 +95,32 @@ const matches = (claim: Claim, known: number) =>
   Math.abs(claim.value - known) <= claim.tolerance;
 
 /**
- * A percentage or share is normally derived rather than returned, so it counts
- * as grounded if it matches the ratio of any two values the tools produced.
+ * Some figures are legitimately derived rather than returned: a share as a
+ * percentage of a total, or a gap such as billed minus collected. Those are
+ * arithmetic on real values, not invention, so they count as grounded when they
+ * match a combination of two figures the tools produced.
  */
-function isDerivedRatio(claim: Claim, known: number[]): boolean {
-  if (claim.value < 0 || claim.value > 100) return false;
+function isDerived(claim: Claim, known: number[]): boolean {
   const cap = Math.min(known.length, 120);
+  const slack = Math.max(claim.tolerance, Math.abs(claim.value) * 1e-6);
+
   for (let i = 0; i < cap; i++) {
-    const b = known[i];
-    if (!b) continue;
+    const a = known[i];
     for (let j = 0; j < cap; j++) {
       if (i === j) continue;
-      const pct = (known[j] / b) * 100;
-      if (Number.isFinite(pct) && Math.abs(claim.value - pct) <= Math.max(claim.tolerance, 0.5)) {
-        return true;
+      const b = known[j];
+
+      // Difference: the gap between two figures, in either direction.
+      if (Math.abs(claim.value - (a - b)) <= slack) return true;
+      // Sum: two figures reported as a combined total.
+      if (Math.abs(claim.value - (a + b)) <= slack) return true;
+
+      // Share of a total, expressed as a percentage.
+      if (b && claim.value >= 0 && claim.value <= 100) {
+        const pct = (a / b) * 100;
+        if (Number.isFinite(pct) && Math.abs(claim.value - pct) <= Math.max(claim.tolerance, 0.5)) {
+          return true;
+        }
       }
     }
   }
@@ -132,7 +144,7 @@ export function verifyGrounding(answer: string, toolNumbers: Set<number>): Groun
     const scaled =
       !direct && known.some((k) => matches(claim, k * LAKH) || matches(claim, k * CR));
 
-    if (direct || scaled || isDerivedRatio(claim, known)) {
+    if (direct || scaled || isDerived(claim, known)) {
       grounded++;
     } else {
       unverified.push(formatClaim(claim.value));

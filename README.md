@@ -46,6 +46,11 @@ matched back against the values the tools returned. Anything that cannot be trac
 reported to the user rather than quietly trusted. This is what catches a model slipping a
 decimal.
 
+**It reports, not just answers.** A slide-over board report builds pipeline, cash and
+execution charts from a live read, reconciles the arithmetic between related columns, and
+saves as a PDF for a leadership meeting. Every figure in it is computed server-side, so
+the charts cannot disagree with the answers the console gives.
+
 **It finds contradictions, not just gaps.** Completeness tells you what is missing.
 A separate audit reconciles the money chain (ordered → billed → collected → receivable)
 and the quantity chain, and reports rows whose present values disagree with each other.
@@ -78,6 +83,13 @@ Each answer carries four things beyond the prose:
 - **Confidence rating** — with the reasoning behind the score.
 - **Grounding check** — whether every figure traced back to a query.
 - **Copy for a brief** — the answer as clean markdown.
+- **Download brief** — a standalone file carrying the answer, the queries behind it, its
+  confidence rating and its verification result.
+
+**Board report** (top right of the console) opens a full report: headline stats, pipeline
+by sector and stage, the ordered/billed/collected cash chain, execution status, the
+consistency findings, and the caveats to read alongside the numbers. **Save as PDF** prints
+it through a dedicated print stylesheet.
 
 The left panel shows both boards' live row counts, field counts, completeness, and when
 they were last read.
@@ -117,6 +129,9 @@ they were last read.
         │  audit_consistency                │  what contradicts itself
         │  join_boards                      │  cross-board coverage
         └───────────────────────────────────┘
+                        |
+        GET /api/report ─┤  same dataset layer, no model involved
+                        |  server-computed series for the report charts
                         |
                         v
         ┌───────────────────────────────────┐

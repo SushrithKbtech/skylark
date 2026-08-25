@@ -423,6 +423,60 @@ body::before {
     transform: translateY(-9px);
   }
 }
+/* ===========================================================================
+   Print: the board report becomes the whole document.
+   =========================================================================== */
+@media print {
+  @page {
+    margin: 16mm;
+    size: A4;
+  }
+
+  /* Everything except the report is chrome. */
+  body > * {
+    display: none !important;
+  }
+  body:has(.report) > * {
+    display: block !important;
+  }
+
+  body {
+    background: #fff !important;
+  }
+  body::before {
+    display: none !important;
+  }
+
+  .report {
+    color: #101418;
+  }
+  .report .glass {
+    background: #fff !important;
+    border: 1px solid #d8dbe4 !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+  }
+  .report .glass::before {
+    display: none !important;
+  }
+
+  /* Bars are the data, so they must survive the printer's colour stripping. */
+  .report [style*="background"] {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .break-inside-avoid {
+    break-inside: avoid;
+  }
+
+  /* Motion has no meaning on paper. */
+  .report * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
 /* Tap ripple for the guided-tour cursor as it lands on its target. */
 @keyframes tapRipple {
   from {

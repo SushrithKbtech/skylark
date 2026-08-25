@@ -34,6 +34,12 @@ export const CONSOLE_STEPS: Step[] = [
     place: "top",
   },
   {
+    target: "report",
+    title: "Or take the whole picture",
+    body: "The board report builds pipeline, cash and execution charts from a live read, flags rows whose numbers contradict each other, and saves as a PDF for a leadership meeting.",
+    place: "bottom",
+  },
+  {
     target: "composer",
     title: "Or ask in plain language",
     body: 'Try "how is our pipeline looking for the mining sector this quarter?" or "do our billing numbers actually add up?". There is no query syntax to learn.',
