@@ -58,6 +58,8 @@ async function openStream(
         messages,
         tools: TOOLS,
         stream: true,
+        // Usage arrives on a final chunk; needed to report cost per question.
+        stream_options: { include_usage: true },
       });
     } catch (err) {
       lastError = err;
@@ -185,6 +187,9 @@ export async function* runAgent(history: ChatMessage[]): AsyncGenerator<AgentEve
     ...history.map((m) => ({ role: m.role, content: m.content })),
   ];
 
+  // Accumulated across every model round trip this question required.
+  const usage = { prompt: 0, completion: 0, calls: 0 };
+
   try {
     for (let turn = 0; turn < MAX_TURNS; turn++) {
       const stream = await openStream(openai, messages);
@@ -193,6 +198,13 @@ export async function* runAgent(history: ChatMessage[]): AsyncGenerator<AgentEve
       const calls = new Map<number, PendingCall>();
 
       for await (const chunk of stream) {
+        // The usage chunk carries no choices, so read it before bailing out.
+        if (chunk.usage) {
+          usage.prompt += chunk.usage.prompt_tokens ?? 0;
+          usage.completion += chunk.usage.completion_tokens ?? 0;
+          usage.calls += 1;
+        }
+
         const delta = chunk.choices[0]?.delta;
         if (!delta) continue;
 
@@ -213,6 +225,9 @@ export async function* runAgent(history: ChatMessage[]): AsyncGenerator<AgentEve
       const pending = [...calls.values()].filter((c) => c.name);
 
       if (!pending.length) {
+        console.info(
+          `[usage] ${MODEL} · ${usage.calls} model call(s) · ${usage.prompt} in / ${usage.completion} out · ${usage.prompt + usage.completion} total`,
+        );
         yield { type: "done" };
         return;
       }

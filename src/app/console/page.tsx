@@ -1,5 +1,6 @@
 import { BoardPanel } from "@/components/BoardPanel";
 import { Chat } from "@/components/Chat";
+import { Tour } from "@/components/Tour";
 import { Nav } from "@/components/site/Nav";
 
 export const metadata = {
@@ -16,6 +17,7 @@ export default function Console() {
           <Chat />
         </main>
       </div>
+      <Tour />
     </div>
   );
 }

@@ -150,6 +150,9 @@ function sampleDerived(d: Dataset, derivedKey: string): string | undefined {
   return undefined;
 }
 
+/** Category values listed per field in the schema payload. */
+const CATEGORY_SAMPLE = 12;
+
 function describeDataset(d: Dataset) {
   return {
     board: d.slug,
@@ -162,11 +165,20 @@ function describeDataset(d: Dataset) {
       key: f.key,
       label: f.title,
       type: f.kind,
-      filled: f.filled,
-      missing: f.missing,
+      // A percentage carries the same signal as the raw pair at a fraction of
+      // the tokens; this payload is resent on every turn of the loop.
+      populated: `${Math.round((f.filled / Math.max(1, f.filled + f.missing)) * 100)}%`,
       unreadable: f.unparsed || undefined,
-      values: f.categories?.slice(0, 25).map((c) => `${c.label} (${c.count})`),
-      distinct_values: f.categories && f.categories.length > 25 ? f.categories.length : undefined,
+      // High-cardinality identifier columns list every value otherwise, which
+      // dominates the payload without helping the model pick a filter.
+      values:
+        f.categories && f.categories.length <= CATEGORY_SAMPLE
+          ? f.categories.map((c) => `${c.label} (${c.count})`)
+          : f.categories?.slice(0, CATEGORY_SAMPLE).map((c) => `${c.label} (${c.count})`),
+      distinct_values:
+        f.categories && f.categories.length > CATEGORY_SAMPLE
+          ? `${f.categories.length} distinct values, ${CATEGORY_SAMPLE} most common shown. Use query_records to look up a specific one.`
+          : undefined,
       range: f.range ? `${f.range.earliest} to ${f.range.latest}` : undefined,
       numeric: f.stats
         ? { min: f.stats.min, max: f.stats.max, total: f.stats.sum, mean: Math.round(f.stats.mean) }

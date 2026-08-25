@@ -200,7 +200,7 @@ export function Chat() {
               </p>
 
               <p className="kicker mt-10">Try one of these</p>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div data-tour="suggestions" className="mt-4 grid gap-3 sm:grid-cols-2">
                 {SUGGESTIONS.map((s, i) => (
                   <button
                     key={s.label}
@@ -294,6 +294,7 @@ export function Chat() {
       <div className="shrink-0 pt-3">
         <div className="mx-auto w-full max-w-[720px]">
           <div
+            data-tour="composer"
             className="glass p-1.5 transition-all duration-300 focus-within:border-[color-mix(in_srgb,var(--accent)_45%,transparent)]"
             style={{ transitionTimingFunction: "var(--ease)" }}
           >

@@ -51,7 +51,7 @@ export function BoardPanel() {
   }, []);
 
   return (
-    <aside className="flex w-full shrink-0 flex-col gap-4 lg:w-[276px]">
+    <aside data-tour="boards" className="flex w-full shrink-0 flex-col gap-4 lg:w-[276px]">
       <div className="flex items-baseline justify-between">
         <h2 className="kicker">Connected boards</h2>
         {status?.ok && (
