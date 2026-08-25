@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Answer } from "./Answer";
 import { ToolTrail } from "./ToolTrail";
 import { ConfidenceBadge } from "./ConfidenceBadge";
+import { GroundingBadge } from "./GroundingBadge";
 import { CopyAnswer } from "./CopyAnswer";
 import { weakestConfidence, type Turn } from "@/lib/chat-types";
 
@@ -136,6 +137,17 @@ export function Chat() {
                   ],
                 }));
                 break;
+              case "grounding":
+                patch((t) => ({
+                  ...t,
+                  grounding: {
+                    checked: event.checked as number,
+                    grounded: event.grounded as number,
+                    unverified: event.unverified as string[],
+                  },
+                }));
+                break;
+
               case "tool_end":
                 patch((t) => ({
                   ...t,
@@ -245,6 +257,7 @@ export function Chat() {
                           const confidence = weakestConfidence(turn.steps);
                           return confidence ? <ConfidenceBadge confidence={confidence} /> : null;
                         })()}
+                        {turn.grounding && <GroundingBadge grounding={turn.grounding} />}
                         <div className="mt-3">
                           <CopyAnswer text={turn.text} />
                         </div>

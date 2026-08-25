@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import { systemPrompt } from "./system";
 import { TOOLS, runTool } from "./tools";
+import { collectToolNumbers, verifyGrounding } from "./grounding";
 import { MondayError } from "@/lib/monday/client";
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
@@ -18,6 +19,7 @@ export type AgentEvent =
       summary: string;
       confidence?: Confidence;
     }
+  | { type: "grounding"; checked: number; grounded: number; unverified: string[] }
   | { type: "error"; message: string; hint?: string }
   | { type: "done" };
 
@@ -189,6 +191,9 @@ export async function* runAgent(history: ChatMessage[]): AsyncGenerator<AgentEve
 
   // Accumulated across every model round trip this question required.
   const usage = { prompt: 0, completion: 0, calls: 0 };
+  // Every number any tool returned this turn, for the grounding check.
+  const toolNumbers = new Set<number>();
+  let finalText = "";
 
   try {
     for (let turn = 0; turn < MAX_TURNS; turn++) {
@@ -210,6 +215,7 @@ export async function* runAgent(history: ChatMessage[]): AsyncGenerator<AgentEve
 
         if (delta.content) {
           text += delta.content;
+          finalText += delta.content;
           yield { type: "text", delta: delta.content };
         }
 
@@ -228,6 +234,16 @@ export async function* runAgent(history: ChatMessage[]): AsyncGenerator<AgentEve
         console.info(
           `[usage] ${MODEL} · ${usage.calls} model call(s) · ${usage.prompt} in / ${usage.completion} out · ${usage.prompt + usage.completion} total`,
         );
+        // Verify the answer's figures against what the tools actually returned.
+        if (finalText.trim() && toolNumbers.size) {
+          const g = verifyGrounding(finalText, toolNumbers);
+          if (g.checked > 0) {
+            if (g.unverified.length) {
+              console.warn(`[grounding] unverified figures: ${g.unverified.join(", ")}`);
+            }
+            yield { type: "grounding", ...g };
+          }
+        }
         yield { type: "done" };
         return;
       }
@@ -260,6 +276,7 @@ export async function* runAgent(history: ChatMessage[]): AsyncGenerator<AgentEve
               recoverable: false,
             }));
 
+        collectToolNumbers(result, toolNumbers);
         const { ok, summary } = summarize(call.name, result);
         const confidence = (result as { confidence?: Confidence })?.confidence;
         yield { type: "tool_end", id: call.id, name: call.name, ok, summary, confidence };

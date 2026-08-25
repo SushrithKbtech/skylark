@@ -1,4 +1,4 @@
-import { categoryKey, parseDate, parseNumber } from "./normalize";
+import { categoryKey, parseDate, parseNumber, type FieldKind } from "./normalize";
 import type { Dataset, Row } from "./dataset";
 
 export type Operator =
@@ -237,10 +237,31 @@ export type AggregateResult = {
   /** Rows excluded from a numeric aggregation because the metric was missing. */
   excludedForMissingMetric: number;
   overall: number | null;
-  groups: { group: string; value: number; count: number; missingMetric: number }[];
+  groups: { group: string; value: number; display: string; count: number; missingMetric: number }[];
+  /** Pre-rendered overall figure. Quote this rather than converting.  */
+  overall_display: string | null;
   confidence: Confidence;
   uncertainty?: Uncertainty;
 };
+
+/**
+ * Pre-renders a figure for display.
+ *
+ * The model reliably slips a decimal converting rupees to crore, producing
+ * numbers ten times too large or small. Since the server already owns the
+ * arithmetic, it owns the formatting too: the model is told to quote these
+ * strings verbatim rather than convert anything itself.
+ */
+export function formatValue(n: number, kind: FieldKind | "count" | "derived" | "name"): string {
+  if (kind === "count") return n.toLocaleString("en-IN");
+  if (kind !== "currency") {
+    return Number.isInteger(n) ? n.toLocaleString("en-IN") : n.toFixed(2);
+  }
+  const abs = Math.abs(n);
+  if (abs >= 1e7) return `₹${(n / 1e7).toFixed(2)} Cr`;
+  if (abs >= 1e5) return `₹${(n / 1e5).toFixed(2)} L`;
+  return `₹${Math.round(n).toLocaleString("en-IN")}`;
+}
 
 const percentile = (sorted: number[], p: number) => {
   if (!sorted.length) return 0;
@@ -432,12 +453,16 @@ export function aggregateMetrics(
   };
 
   const groups = [...buckets.entries()]
-    .map(([group, b]) => ({
-      group,
-      value: round(reduce(b)),
-      count: b.count,
-      missingMetric: b.missing,
-    }))
+    .map(([group, b]) => {
+      const v = round(reduce(b));
+      return {
+        group,
+        value: v,
+        display: formatValue(v, agg === "count" ? "count" : (metricField?.kind ?? "number")),
+        count: b.count,
+        missingMetric: b.missing,
+      };
+    })
     .sort((a, b) => (agg === "count" ? b.count - a.count : b.value - a.value))
     .slice(0, opts.limit ?? 25);
 
@@ -456,6 +481,9 @@ export function aggregateMetrics(
     matched: rows.length,
     excludedForMissingMetric: all.missing,
     overall: rows.length ? round(reduce(all)) : null,
+    overall_display: rows.length
+      ? formatValue(round(reduce(all)), agg === "count" ? "count" : (metricField?.kind ?? "number"))
+      : null,
     groups,
     confidence: rateConfidence(dataset, rows, {
       aggregation: agg,

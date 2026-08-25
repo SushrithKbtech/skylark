@@ -13,11 +13,18 @@ export type ToolStep = {
   confidence?: Confidence;
 };
 
+export type Grounding = {
+  checked: number;
+  grounded: number;
+  unverified: string[];
+};
+
 export type Turn = {
   id: string;
   role: "user" | "assistant";
   text: string;
   steps: ToolStep[];
+  grounding?: Grounding;
   error?: { message: string; hint?: string };
   streaming?: boolean;
 };
