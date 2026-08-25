@@ -20,7 +20,7 @@ type Step = {
   place: "right" | "left" | "top" | "bottom";
 };
 
-const STEPS: Step[] = [
+export const CONSOLE_STEPS: Step[] = [
   {
     target: "boards",
     title: "Both boards, read live",
@@ -41,24 +41,65 @@ const STEPS: Step[] = [
   },
 ];
 
-const AFTER = {
+const CONSOLE_AFTER = {
   title: "What comes back",
-  body: "Every answer shows the monday.com queries that produced it, a confidence rating computed from how complete the fields it used actually were, and a copy button that gives you the brief as markdown.",
+  body: "Every answer shows the monday.com queries that produced it, a confidence rating computed from how complete the fields it used actually were, a check that every figure traces back to a query, and a copy button that gives you the brief as markdown.",
 };
 
-const SEEN_KEY = "skylark-tour-seen";
+export const LANDING_STEPS: Step[] = [
+  {
+    target: "hero-cta",
+    title: "The console is where you ask",
+    body: "Everything on this page describes what happens behind one text box. This button opens it.",
+    place: "bottom",
+  },
+  {
+    target: "how",
+    title: "Four steps behind every number",
+    body: "The agent reads the live board schema, normalises the messy fields, computes the figure on the server, then explains it. It never adds up rows itself.",
+    place: "top",
+  },
+  {
+    target: "trust",
+    title: "Why the number can be trusted",
+    body: "Each answer carries a confidence rating, a full query trail, and a check that every figure traces back to real board data.",
+    place: "top",
+  },
+];
+
+const LANDING_AFTER = {
+  title: "Ready when you are",
+  body: "Open the console and ask something a founder would ask. The first answer takes a few seconds because it reads both boards live.",
+};
 
 type Box = { top: number; left: number; width: number; height: number };
 
-export function Tour() {
+export function Tour({
+  steps = CONSOLE_STEPS,
+  after,
+  storageKey = "skylark-tour-seen",
+  autoOpen = true,
+  label = "Show me how this works",
+}: {
+  steps?: Step[];
+  after?: { title: string; body: string };
+  storageKey?: string;
+  autoOpen?: boolean;
+  label?: string;
+}) {
+  const STEPS = steps;
+  const AFTER = after ?? (steps === LANDING_STEPS ? LANDING_AFTER : CONSOLE_AFTER);
+  const SEEN_KEY = storageKey;
   const [open, setOpen] = useState(false);
   const [index, setIndex] = useState(0);
   const [box, setBox] = useState<Box | null>(null);
   const raf = useRef(0);
+  const measureRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     // A timer rather than requestAnimationFrame: rAF is paused in background
     // tabs, so a link opened in one would never show the tour at all.
+    if (!autoOpen) return;
     const id = setTimeout(() => {
       try {
         if (!localStorage.getItem(SEEN_KEY)) setOpen(true);
@@ -68,7 +109,7 @@ export function Tour() {
       }
     }, 0);
     return () => clearTimeout(id);
-  }, []);
+  }, [autoOpen, SEEN_KEY]);
 
   const step: Step | undefined = STEPS[index];
   const finished = index >= STEPS.length;
@@ -83,6 +124,19 @@ export function Tour() {
       setBox(null);
       return;
     }
+
+    // A target below the fold must be brought into view before its rect means
+    // anything, otherwise the spotlight lands off-screen.
+    const r0 = el.getBoundingClientRect();
+    const offscreen = r0.top < 72 || r0.bottom > window.innerHeight - 72;
+    if (offscreen) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      // Re-measure once the scroll has settled.
+      clearTimeout(raf.current);
+      raf.current = window.setTimeout(measureRef.current, 420);
+      return;
+    }
+
     const r = el.getBoundingClientRect();
     const pad = 8;
     setBox({
@@ -92,6 +146,10 @@ export function Tour() {
       height: r.height + pad * 2,
     });
   }, [step]);
+
+  useEffect(() => {
+    measureRef.current = measure;
+  }, [measure]);
 
   useEffect(() => {
     if (!open) return;
@@ -116,7 +174,7 @@ export function Tour() {
     } catch {
       // Nothing to persist to; the tour simply reappears next visit.
     }
-  }, []);
+  }, [SEEN_KEY]);
 
   useEffect(() => {
     if (!open) return;
@@ -128,7 +186,21 @@ export function Tour() {
     return () => window.removeEventListener("keydown", onKey);
   }, [open, close]);
 
-  if (!open) return null;
+  if (!open) {
+    if (autoOpen) return null;
+    return (
+      <button
+        onClick={() => {
+          setIndex(0);
+          setOpen(true);
+        }}
+        className="btn-ghost"
+      >
+        <CursorClickIcon size={15} weight="bold" />
+        {label}
+      </button>
+    );
+  }
 
   // `box` can still hold the previous step's rect for one frame after the tour
   // advances past the last step, so both must be present before it is used.

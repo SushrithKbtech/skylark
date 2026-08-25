@@ -6,6 +6,7 @@ import { ToolTrail } from "./ToolTrail";
 import { ConfidenceBadge } from "./ConfidenceBadge";
 import { GroundingBadge } from "./GroundingBadge";
 import { CopyAnswer } from "./CopyAnswer";
+import { DownloadBrief } from "./DownloadBrief";
 import { weakestConfidence, type Turn } from "@/lib/chat-types";
 
 const SUGGESTIONS = [
@@ -258,8 +259,18 @@ export function Chat() {
                           return confidence ? <ConfidenceBadge confidence={confidence} /> : null;
                         })()}
                         {turn.grounding && <GroundingBadge grounding={turn.grounding} />}
-                        <div className="mt-3">
+                        <div className="mt-3 flex flex-wrap items-center gap-2">
                           <CopyAnswer text={turn.text} />
+                          <DownloadBrief
+                            question={
+                              turns[turns.findIndex((x) => x.id === turn.id) - 1]?.text ??
+                              "Skylark BI brief"
+                            }
+                            answer={turn.text}
+                            steps={turn.steps}
+                            confidence={weakestConfidence(turn.steps)}
+                            grounding={turn.grounding}
+                          />
                         </div>
                       </>
                     )}

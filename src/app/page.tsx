@@ -3,7 +3,8 @@ import { ArrowRightIcon } from "@phosphor-icons/react/dist/ssr";
 import { Nav } from "@/components/site/Nav";
 import { Reveal } from "@/components/site/Reveal";
 import { DemoConsole } from "@/components/site/DemoConsole";
-import { StageChart } from "@/components/site/StageChart";
+import { HeroVisual } from "@/components/site/HeroVisual";
+import { Tour, LANDING_STEPS } from "@/components/Tour";
 import { NeuralBackground } from "@/components/site/NeuralBackground";
 
 const DIFFERENTIATORS = [
@@ -98,24 +99,27 @@ export default function Landing() {
               className="animate-fade-up mt-8 flex flex-wrap items-center gap-3"
               style={{ animationDelay: "270ms" }}
             >
-              <Link href="/console" className="btn">
+              <Link href="/console" data-tour="hero-cta" className="btn">
                 Open the console
                 <ArrowRightIcon size={15} weight="bold" />
               </Link>
-              <a href="#how" className="btn-ghost">
-                See how it works
-              </a>
+              <Tour
+                steps={LANDING_STEPS}
+                storageKey="skylark-landing-tour"
+                autoOpen={false}
+                label="Guide me"
+              />
             </div>
           </div>
 
           <div className="animate-fade-up lg:pl-4" style={{ animationDelay: "330ms" }}>
-            <StageChart />
+            <HeroVisual />
           </div>
         </div>
       </section>
 
       {/* How it works: stepped preview. No eyebrow. */}
-      <section id="how" className="mx-auto w-full max-w-[1180px] scroll-mt-20 px-5 py-20">
+      <section id="how" data-tour="how" className="mx-auto w-full max-w-[1180px] scroll-mt-20 px-5 py-20">
         <Reveal>
           <h2 className="h2 max-w-[19ch]">
             One question in. Four things happen before a number comes out.
@@ -132,7 +136,7 @@ export default function Landing() {
       </section>
 
       {/* Differentiators: asymmetric bento, mixed cell sizes. Eyebrow 2 of 2. */}
-      <section id="trust" className="mx-auto w-full max-w-[1180px] scroll-mt-20 px-5 py-20">
+      <section id="trust" data-tour="trust" className="mx-auto w-full max-w-[1180px] scroll-mt-20 px-5 py-20">
         <Reveal>
           <span className="kicker">Beyond answering the question</span>
           <h2 className="h2 mt-4 max-w-[21ch]">
